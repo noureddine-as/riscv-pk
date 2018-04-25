@@ -21,7 +21,7 @@ bbl_payload: $(BBL_PAYLOAD)
 
 raw_logo.o: bbl_logo_file
 
-bbl_logo_file: @BBL_LOGO_FILE@
+bbl_logo_file: riscv_logo.txt
 	cat $^ | sed 's/$$/\r/' > $@
 
 bbl_test_srcs =

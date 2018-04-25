@@ -8,7 +8,7 @@
 #include <string.h>
 
 static const void* entry_point;
-long disabled_hart_mask;
+long disabled_hart_mask = 0;
 
 static uintptr_t dtb_output()
 {
