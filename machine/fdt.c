@@ -737,4 +737,28 @@ void fdt_print(uintptr_t fdt)
     fdt_print_printm(&info, "}\r\n");
   }
 }
+
+void fdt_printk(uintptr_t fdt)
+{
+  struct fdt_print_info info;
+  struct fdt_cb cb;
+
+  info.depth = 0;
+
+  memset(&cb, 0, sizeof(cb));
+  cb.open = fdt_print_open;
+  cb.prop = fdt_print_prop;
+  cb.done = fdt_print_done;
+  cb.close = fdt_print_close;
+  cb.extra = &info;
+
+  fdt_scan(fdt, &cb);
+
+  while (info.depth > 0) {
+    info.depth--;
+    fdt_print_printk(&info, "}\r\n");
+  }
+}
+
+
 #endif

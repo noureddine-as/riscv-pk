@@ -20,7 +20,8 @@ pk_c_srcs = \
 	elf.c \
 	console.c \
 	mmap.c \
-
+	user_main.c \
+	
 pk_asm_srcs = \
 	entry.S \
 

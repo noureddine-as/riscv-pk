@@ -4,7 +4,22 @@
 #include "elf.h"
 #include "mtrap.h"
 #include "frontend.h"
+
+/*******************/
+
+/*   to include atomic related functions, like mb()   */
+#include "atomic.h"
+
+/*   to include filters    */
+#include "fdt.h"
+
+
+/*******************************/
+
+
 #include <stdbool.h>
+
+static const void* entry_point;
 
 elf_info current;
 long disabled_hart_mask;
@@ -139,8 +154,15 @@ static void run_loaded_program(size_t argc, char** argv, uintptr_t kstack_top)
   start_user(&tf);
 }
 
+/*
 static void rest_of_boot_loader(uintptr_t kstack_top)
 {
+
+  printm("Hello world, from user main !!!!! .... printm \n");
+  printk("Hello world, from user main !!!!! .... printk \n");
+  //printf("Hello world, from user main !!!!! .... printf \n");
+
+
   arg_buf args;
   size_t argc = parse_args(&args);
   if (!argc)
@@ -154,16 +176,25 @@ static void rest_of_boot_loader(uintptr_t kstack_top)
 
   run_loaded_program(argc, args.argv, kstack_top);
 }
-
 void boot_loader(uintptr_t dtb)
 {
+  printm("Beginning of bootloader !!!!! .... printm \n");
+  printk("Beginning of bootloader !!!!! .... printk \n");
+
   extern char trap_entry;
   write_csr(stvec, &trap_entry);
   write_csr(sscratch, 0);
   write_csr(sie, 0);
   set_csr(sstatus, SSTATUS_SUM);
 
+  printm("Before file_init !!!!! .... printm \n");
+  printk("Before file_init !!!!! .... printk \n");
+
   file_init();
+
+  printm("After file_init !!!!! .... printm \n");
+  printk("After file_init !!!!! .... printk \n");
+
   enter_supervisor_mode(rest_of_boot_loader, pk_vm_init(), 0);
 }
 
@@ -173,3 +204,86 @@ void boot_other_hart(uintptr_t dtb)
   while (1)
     wfi();
 }
+*/
+
+
+static uintptr_t dtb_output()
+{
+  // extern char _payload_end;
+  extern char _end;
+  
+  //uintptr_t end = (uintptr_t) &_payload_end;
+  uintptr_t end = (uintptr_t) &_end;
+
+  return (end + MEGAPAGE_SIZE - 1) / MEGAPAGE_SIZE * MEGAPAGE_SIZE;
+}
+
+static void filter_dtb(uintptr_t source)
+{
+  uintptr_t dest = dtb_output();
+  uint32_t size = fdt_size(source);
+  memcpy((void*)dest, (void*)source, size);
+
+  // Remove information from the chained FDT
+  filter_harts(dest, &disabled_hart_mask);
+  filter_plic(dest);
+  filter_compat(dest, "riscv,clint0");
+  filter_compat(dest, "riscv,debug-013");
+}
+
+void boot_loader(uintptr_t dtb)
+{
+  // ONLY M works here !
+  printm("Hello world, from begginning of bootloader !!!!! .... printm \n");
+  printk("Hello world, from begginning of bootloader !!!!! .... printk \n");
+
+  extern char trap_entry;
+  write_csr(stvec, &trap_entry);
+  write_csr(sscratch, 0);
+  write_csr(sie, 0);
+  set_csr(sstatus, SSTATUS_SUM);
+
+  //  We need this so that printk works ! 
+  file_init();
+
+
+  extern void* user_main;
+  filter_dtb(dtb);
+#ifdef PK_ENABLE_LOGO
+  printm("mmm................................................\n"
+         "                TIMA LABORATORY                 \n"
+         "................................................\n");
+  printk("kkk................................................\n"
+         "                TIMA LABORATORY                 \n"
+         "................................................\n");
+  //print_logo();
+#endif
+#ifdef PK_PRINT_DEVICE_TREE
+  fdt_print(dtb_output());
+#endif
+  mb();
+  entry_point = &user_main;
+  boot_other_hart(0);
+}
+
+void boot_other_hart(uintptr_t unused __attribute__((unused)))
+{
+  const void* entry;
+  do {
+    entry = entry_point;
+    mb();
+  } while (!entry);
+
+  long hartid = read_csr(mhartid);
+  if ((1 << hartid) & disabled_hart_mask) {
+    while (1) {
+      __asm__ volatile("wfi");
+#ifdef __riscv_div
+      __asm__ volatile("div x0, x0, x0");
+#endif
+    }
+  }
+
+  enter_supervisor_mode(entry, hartid, dtb_output());
+}
+
