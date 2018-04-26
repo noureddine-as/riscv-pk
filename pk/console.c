@@ -1,10 +1,11 @@
 #include "pk.h"
 #include "file.h"
 #include "frontend.h"
+#include "console.h"
 #include <stdint.h>
 #include <stdarg.h>
 
-static void vprintk(const char* s, va_list vl)
+void vprintk(const char* s, va_list vl)
 {
   char out[256]; // XXX
   int res = vsnprintf(out, sizeof(out), s, vl);

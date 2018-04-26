@@ -11,7 +11,7 @@
 #include "atomic.h"
 
 /*   to include filters    */
-#include "fdt.h"
+#include "fdt_k.h"
 
 
 /*******************************/
@@ -259,7 +259,7 @@ void boot_loader(uintptr_t dtb)
   //print_logo();
 #endif
 #ifdef PK_PRINT_DEVICE_TREE
-  fdt_print(dtb_output());
+  fdt_printk(dtb_output());
 #endif
   mb();
   entry_point = &user_main;

@@ -2,8 +2,10 @@
 #include <stdint.h>
 #include <string.h>
 #include "config.h"
-#include "fdt.h"
+#include "fdt_k.h"
 #include "mtrap.h"
+#include "console.h"
+
 
 static inline uint32_t bswap(uint32_t x)
 {
@@ -438,16 +440,23 @@ static void plic_done(const struct fdt_scan_node *node, void *extra)
         hls->plic_s_ie     = (uintptr_t*)((uintptr_t)scan->reg + ENABLE_BASE + ENABLE_SIZE * index);
         hls->plic_s_thresh = (uint32_t*) ((uintptr_t)scan->reg + HART_BASE   + HART_SIZE   * index);
       } else {
-        printm("PLIC wired hart %d to wrong interrupt %d", hart, cpu_int);
+        //printm("PLIC wired hart %d to wrong interrupt %d", hart, cpu_int);
+        printk("PLIC wired hart %d to wrong interrupt %d", hart, cpu_int);
+
       }
     }
     value += 2;
   }
 #if 0
-  printm("PLIC: prio %x devs %d\r\n", (uint32_t)(uintptr_t)plic_priorities, plic_ndevs);
+  //printm("PLIC: prio %x devs %d\r\n", (uint32_t)(uintptr_t)plic_priorities, plic_ndevs);
+  //for (int i = 0; i < MAX_HARTS; ++i) {
+  //  hls_t *hls = OTHER_HLS(i);
+  //  printm("CPU %d: %x %x %x %x\r\n", i, (uint32_t)(uintptr_t)hls->plic_m_ie, (uint32_t)(uintptr_t)hls->plic_m_thresh, (uint32_t)(uintptr_t)hls->plic_s_ie, (uint32_t)(uintptr_t)hls->plic_s_thresh);
+  //}
+  printk("PLIC: prio %x devs %d\r\n", (uint32_t)(uintptr_t)plic_priorities, plic_ndevs);
   for (int i = 0; i < MAX_HARTS; ++i) {
     hls_t *hls = OTHER_HLS(i);
-    printm("CPU %d: %x %x %x %x\r\n", i, (uint32_t)(uintptr_t)hls->plic_m_ie, (uint32_t)(uintptr_t)hls->plic_m_thresh, (uint32_t)(uintptr_t)hls->plic_s_ie, (uint32_t)(uintptr_t)hls->plic_s_thresh);
+    printk("CPU %d: %x %x %x %x\r\n", i, (uint32_t)(uintptr_t)hls->plic_m_ie, (uint32_t)(uintptr_t)hls->plic_m_thresh, (uint32_t)(uintptr_t)hls->plic_s_ie, (uint32_t)(uintptr_t)hls->plic_s_thresh);
   }
 #endif
 }
@@ -589,7 +598,9 @@ static bool hart_filter_mask(const struct hart_filter *filter)
   if (strcmp(filter->status, "okay")) return true;
   if (!strcmp(filter->mmu_type, "riscv,sv39")) return false;
   if (!strcmp(filter->mmu_type, "riscv,sv48")) return false;
-  printm("hart_filter_mask saw unknown hart type: status=\"%s\", mmu_type=\"%s\"\n",
+  //printm("hart_filter_mask saw unknown hart type: status=\"%s\", mmu_type=\"%s\"\n",
+  //       filter->status, filter->mmu_type);
+  printk("hart_filter_mask saw unknown hart type: status=\"%s\", mmu_type=\"%s\"\n",
          filter->status, filter->mmu_type);
   return true;
 }
@@ -629,22 +640,21 @@ void filter_harts(uintptr_t fdt, long *disabled_hart_mask)
 //////////////////////////////////////////// PRINT //////////////////////////////////////////////
 
 #ifdef PK_PRINT_DEVICE_TREE
-#define FDT_PRINT_MAX_DEPTH 32
 
-struct fdt_print_info {
-  int depth;
-  const struct fdt_scan_node *stack[FDT_PRINT_MAX_DEPTH];
-};
+// void fdt_print_printm(struct fdt_print_info *info, const char *format, ...)
 
-void fdt_print_printm(struct fdt_print_info *info, const char *format, ...)
+void fdt_print_printk(struct fdt_print_info *info, const char *format, ...)
 {
   va_list vl;
 
   for (int i = 0; i < info->depth; ++i)
-    printm("  ");
+//    printm("  ");
+
+    printk("  ");
 
   va_start(vl, format);
-  vprintm(format, vl);
+//  vprintm(format, vl);
+  vprintk(format, vl);
   va_end(vl);
 }
 
@@ -654,10 +664,13 @@ static void fdt_print_open(const struct fdt_scan_node *node, void *extra)
 
   while (node->parent != NULL && info->stack[info->depth-1] != node->parent) {
     info->depth--;
-    fdt_print_printm(info, "}\r\n");
-  }
+    //fdt_print_printm(info, "}\r\n");
+    fdt_print_printk(info, "}\r\n");
 
-  fdt_print_printm(info, "%s {\r\n", node->name);
+  }
+  //fdt_print_printm(info, "%s {\r\n", node->name);
+
+  fdt_print_printk(info, "%s {\r\n", node->name);
   info->stack[info->depth] = node;
   info->depth++;
 }
@@ -668,13 +681,17 @@ static void fdt_print_prop(const struct fdt_scan_prop *prop, void *extra)
   int asstring = 1;
   char *char_data = (char *)(prop->value);
 
-  fdt_print_printm(info, "%s", prop->name);
+  //fdt_print_printm(info, "%s", prop->name);
+  fdt_print_printk(info, "%s", prop->name);
 
   if (prop->len == 0) {
-    printm(";\r\n");
+    //printm(";\r\n");
+    printk(";\r\n");
+
     return;
   } else {
-    printm(" = ");
+    //printm(" = ");
+    printk(" = ");
   }
 
   /* It appears that dtc uses a hueristic to detect strings so I'm using a
@@ -689,20 +706,28 @@ static void fdt_print_prop(const struct fdt_scan_prop *prop, void *extra)
   if (asstring) {
     for (size_t i = 0; i < prop->len; i += strlen(char_data + i) + 1) {
       if (i != 0)
-        printm(", ");
-      printm("\"%s\"", char_data + i);
+          printk(", ");
+      printk("\"%s\"", char_data + i);
+      //  printm(", ");
+      //printm("\"%s\"", char_data + i);
     }
   } else {
-    printm("<");
+    //printm("<");
+    printk("<");
+
     for (size_t i = 0; i < prop->len/4; ++i) {
       if (i != 0)
-        printm(" ");
-      printm("0x%08x", bswap(prop->value[i]));
+        printk(" ");
+      printk("0x%08x", bswap(prop->value[i]));
+      //  printm(" ");
+      //printm("0x%08x", bswap(prop->value[i]));
     }
-    printm(">");
-  }
+    printk(">");
+    //printm(">");
 
-  printm(";\r\n");
+  }
+  printk(";\r\n");
+  //printm(";\r\n");
 }
 
 static void fdt_print_done(const struct fdt_scan_node *node, void *extra)
@@ -734,7 +759,8 @@ void fdt_print(uintptr_t fdt)
 
   while (info.depth > 0) {
     info.depth--;
-    fdt_print_printm(&info, "}\r\n");
+    //fdt_print_printm(&info, "}\r\n");
+    fdt_print_printk(&info, "}\r\n");
   }
 }
 
@@ -756,7 +782,7 @@ void fdt_printk(uintptr_t fdt)
 
   while (info.depth > 0) {
     info.depth--;
-    fdt_print_printm(&info, "}\r\n");
+    fdt_print_printk(&info, "}\r\n");
   }
 }
 
