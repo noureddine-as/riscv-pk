@@ -10,9 +10,8 @@
 /*   to include atomic related functions, like mb()   */
 #include "atomic.h"
 
-/*   to include filters    */
+/*   to include filters and device tree kernel printers    */
 #include "fdt_k.h"
-
 
 /*******************************/
 
@@ -22,7 +21,7 @@
 static const void* entry_point;
 
 elf_info current;
-long disabled_hart_mask;
+long disabled_hart_mask = 0xFE;
 
 static void handle_option(const char* s)
 {
@@ -234,8 +233,8 @@ static void filter_dtb(uintptr_t source)
 void boot_loader(uintptr_t dtb)
 {
   // ONLY M works here !
-  printm("Hello world, from begginning of bootloader !!!!! .... printm \n");
-  printk("Hello world, from begginning of bootloader !!!!! .... printk \n");
+  printm("Launching bootloader ...\n");
+  printk("Launching bootloader ...\n");
 
   extern char trap_entry;
   write_csr(stvec, &trap_entry);
@@ -246,16 +245,17 @@ void boot_loader(uintptr_t dtb)
   //  We need this so that printk works ! 
   file_init();
 
-
   extern void* user_main;
   filter_dtb(dtb);
 #ifdef PK_ENABLE_LOGO
-  printm("mmm................................................\n"
-         "                TIMA LABORATORY                 \n"
-         "................................................\n");
-  printk("kkk................................................\n"
-         "                TIMA LABORATORY                 \n"
-         "................................................\n");
+  printm("................................................\n"
+         "|                TIMA LABORATORY               | \n"
+         "|          Grenoble INP - UGA - CNRS           | \n"
+         "|..............................................|\n");
+  printk("................................................\n"
+         "|                TIMA LABORATORY               | \n"
+         "|          Grenoble INP - UGA - CNRS           | \n"
+         "|..............................................|\n");
   //print_logo();
 #endif
 #ifdef PK_PRINT_DEVICE_TREE
