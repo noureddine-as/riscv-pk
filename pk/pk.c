@@ -21,7 +21,7 @@
 static const void* entry_point;
 
 elf_info current;
-long disabled_hart_mask = 0xFC;
+long disabled_hart_mask = 0;
 
 static void handle_option(const char* s)
 {
