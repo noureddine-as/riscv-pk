@@ -107,6 +107,17 @@ static void handle_interrupt(trapframe_t* tf)
 
 static void handle_supervisor_timer_interrupt(trapframe_t* tf)
 {
+  // https://github.com/coreboot/coreboot/blob/master/src/arch/riscv/trap_handler.c
+  // The only way to reset the timer interrupt is to
+  // write mtimecmp. But we also have to ensure the
+  // comparison fails, for a long time, to let
+  // supervisor interrupt handler compute a new value
+  // and set it. Finally, it fires if mtimecmp is <=
+  // mtime, not =, so setting mtimecmp to 0 won't work
+  // to clear the interrupt and disable a new one. We
+  // have to set the mtimecmp far into the future.
+  // Awkward!
+
   printk("[ CAUSE_SUPERVISOR_TIMER_INTERRUPT ] .. Setting timecmp to max and Clearing STIP ... t=%d\n", *mtime);
   sbi_call_set_timer_MAX();
   clear_csr(sip, SIP_STIP);
@@ -118,7 +129,7 @@ void handle_trap(trapframe_t* tf)
 
   //if ( (tf->cause) & (1ULL << (__riscv_xlen - 1) ) ){ //(intptr_t)tf->cause < 0){
   if((intptr_t)tf->cause < 0){
-    uint32_t int_code = tf->cause;
+    uint64_t int_code = tf->cause & ~0x8000000000000000ULL;
 
 
     typedef void (*interrupt_handler)(trapframe_t*);

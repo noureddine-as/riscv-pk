@@ -37,6 +37,16 @@ uintptr_t sbi_call_set_timer(uint64_t next_time) //uintptr_t arg0, uintptr_t cod
   return a0;
 }
 
+uintptr_t sbi_call_send_ipi(uint64_t selected_harts) //uintptr_t arg0, uintptr_t code)
+{
+  register uintptr_t a0 asm ("a0") = (uintptr_t)selected_harts;
+  register uintptr_t a1 asm ("a1"); // = 'P';
+  register uintptr_t a7 asm ("a7") = SBI_SEND_IPI;
+  asm volatile ("ecall" : "=r" (a0) : "r" (a0), "r" (a1), "r" (a7));
+
+  return a0;
+}
+
 extern volatile uint64_t* mtime;
 void supervisor_main(long cid, char** argv)
 {
@@ -50,7 +60,8 @@ void supervisor_main(long cid, char** argv)
 	if(cid == 0){
 		uint64_t next_timer_int = *mtime + 1000;
 		printk("[Core %d] Will configure timer on %d \n", cid, next_timer_int);
-		sbi_call_set_timer(next_timer_int);
+		//sbi_call_set_timer(next_timer_int);
+		sbi_call_send_ipi(0x0E);
 	}
 
 	//int ret = (int)(sbi_call_putchar('\n'));

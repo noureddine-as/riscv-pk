@@ -42,6 +42,7 @@ static void delegate_traps()
   if (!supports_extension('S'))
     return;
 
+  // uintptr_t interrupts = MIP_SSIP | MIP_STIP | MIP_SEIP; //ORIGINAL
   uintptr_t interrupts = MIP_SSIP | MIP_STIP | MIP_SEIP;
   uintptr_t exceptions =
     (1U << CAUSE_MISALIGNED_FETCH) |
@@ -192,7 +193,11 @@ void enter_supervisor_mode(void (*fn)(uintptr_t), uintptr_t arg0, uintptr_t arg1
   
   //mstatus = INSERT_FIELD(mstatus, MSTATUS_MPIE, 1);
   mstatus = INSERT_FIELD(mstatus, MSTATUS_MPIE, 0);  // Original
-  
+
+  //******************************************************************************************
+  printm("mhartid= %llx     mstatus = %llx \n", read_csr(mhartid), mstatus);
+  //******************************************************************************************
+
   write_csr(mstatus, mstatus);
   write_csr(mscratch, MACHINE_STACK_TOP() - MENTRY_FRAME_SIZE);
   write_csr(mepc, fn);
