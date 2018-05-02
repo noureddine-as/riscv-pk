@@ -37,7 +37,6 @@ uintptr_t sbi_call_set_timer(uint64_t next_time) //uintptr_t arg0, uintptr_t cod
   return a0;
 }
 
-
 extern volatile uint64_t* mtime;
 void supervisor_main(long cid, char** argv)
 {
