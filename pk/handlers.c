@@ -31,6 +31,12 @@ static void handle_misaligned_fetch(trapframe_t* tf)
   panic("Misaligned instruction access!");
 }
 
+static void handle_fault_load_access(trapframe_t* tf)
+{
+  dump_tf(tf);
+  panic("Load access fault!");
+}
+
 static void handle_misaligned_store(trapframe_t* tf)
 {
   dump_tf(tf);
@@ -71,13 +77,22 @@ static void handle_syscall(trapframe_t* tf)
 
 static void handle_interrupt(trapframe_t* tf)
 {
-  clear_csr(sip, SIP_SSIP);
+  //panic("An interruption has been catched %d", tf->cause);
+  //write_csr(sip, 0);
+  //clear_csr(sip, SIP_SSIP); // ORIGINAL
+  clear_csr(sip, SIP_STIP);
+
 }
 
 void handle_trap(trapframe_t* tf)
 {
-  if ((intptr_t)tf->cause < 0)
+  printk("HANDLING TRAP     cause=%d\n", tf->cause);
+
+  if ((intptr_t)tf->cause < 0){
+    printk("It's an interruption !     cause=%d\n", tf->cause);
+
     return handle_interrupt(tf);
+  }
 
   typedef void (*trap_handler)(trapframe_t*);
 
@@ -85,6 +100,10 @@ void handle_trap(trapframe_t* tf)
     [CAUSE_MISALIGNED_FETCH] = handle_misaligned_fetch,
     [CAUSE_FETCH_PAGE_FAULT] = handle_fault_fetch,
     [CAUSE_ILLEGAL_INSTRUCTION] = handle_illegal_instruction,
+
+    // Added by me
+    [CAUSE_LOAD_ACCESS] = handle_fault_load_access,
+
     [CAUSE_USER_ECALL] = handle_syscall,
     [CAUSE_BREAKPOINT] = handle_breakpoint,
     [CAUSE_MISALIGNED_STORE] = handle_misaligned_store,

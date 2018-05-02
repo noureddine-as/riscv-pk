@@ -21,7 +21,7 @@
 static const void* entry_point;
 
 elf_info current;
-long disabled_hart_mask = 0xFE;
+long disabled_hart_mask = 0xFC;
 
 static void handle_option(const char* s)
 {
@@ -239,13 +239,20 @@ void boot_loader(uintptr_t dtb)
   extern char trap_entry;
   write_csr(stvec, &trap_entry);
   write_csr(sscratch, 0);
-  write_csr(sie, 0);
-  set_csr(sstatus, SSTATUS_SUM);
+  //write_csr(sie, 0);   // ORIGINAL
+  
+  //            Enabling Software IE and Timer IE
+  write_csr(sie,  1 << 5 | 1 << 4 | 1 << 1 | 1); // let's define interrupts that are enabled in Supervisor mode.
+
+
+  // set_csr(sstatus, SSTATUS_SUM);  // ORIGINAL
+    set_csr(sstatus, SSTATUS_SUM | SSTATUS_SIE | SSTATUS_UIE);
+
 
   //  We need this so that printk works ! 
   file_init();
 
-  extern void* user_main;
+  extern void* supervisor_main;
   filter_dtb(dtb);
 #ifdef PK_ENABLE_LOGO
   printm("................................................\n"
@@ -262,7 +269,7 @@ void boot_loader(uintptr_t dtb)
   fdt_printk(dtb_output());
 #endif
   mb();
-  entry_point = &user_main;
+  entry_point = &supervisor_main;
   boot_other_hart(0);
 }
 
@@ -283,6 +290,11 @@ void boot_other_hart(uintptr_t unused __attribute__((unused)))
 #endif
     }
   }
+
+
+  //extern void machine_main(long cid, char** argv);
+  //machine_main(hartid, 0);
+
 
   enter_supervisor_mode(entry, hartid, dtb_output());
 }

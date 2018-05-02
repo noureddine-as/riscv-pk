@@ -60,6 +60,7 @@ void poweroff(uint16_t code) __attribute((noreturn));
 void printm(const char* s, ...);
 void vprintm(const char *s, va_list args);
 void putstring(const char* s);
+
 #define assert(x) ({ if (!(x)) die("assertion failed: %s", #x); })
 #define die(str, ...) ({ printm("%s:%d: " str "\n", __FILE__, __LINE__, ##__VA_ARGS__); poweroff(-1); })
 

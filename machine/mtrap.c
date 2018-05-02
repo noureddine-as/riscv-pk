@@ -126,6 +126,8 @@ void mcall_trap(uintptr_t* regs, uintptr_t mcause, uintptr_t mepc)
 {
   write_csr(mepc, mepc + 4);
 
+  // reg 17 : a7 function arguments (originally from x12-x17)
+  // x10-x11 : a0-a1
   uintptr_t n = regs[17], arg0 = regs[10], arg1 = regs[11], retval, ipi_type;
 
   switch (n)
