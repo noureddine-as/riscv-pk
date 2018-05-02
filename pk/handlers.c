@@ -80,16 +80,25 @@ static void handle_interrupt(trapframe_t* tf)
   //panic("An interruption has been catched %d", tf->cause);
   //write_csr(sip, 0);
   //clear_csr(sip, SIP_SSIP); // ORIGINAL
-  clear_csr(sip, SIP_STIP);
+  //clear_csr(sip, SIP_STIP);
+  write_csr(sie, 0);
+
+  printk("Interruption handled .. Clearing SIP and SIE\n");
+  write_csr(sip, 0);
+  
+  write_csr(sie, 0);
+
+  //write_csr(mip, 0);
+
 
 }
 
 void handle_trap(trapframe_t* tf)
 {
-  printk("HANDLING TRAP     cause=%d\n", tf->cause);
+  printk("HANDLING TRAP     cause=%d\n", (intptr_t)tf->cause);
 
   if ((intptr_t)tf->cause < 0){
-    printk("It's an interruption !     cause=%d\n", tf->cause);
+    printk("It's an interruption !     cause=%d\n", (intptr_t)tf->cause);
 
     return handle_interrupt(tf);
   }

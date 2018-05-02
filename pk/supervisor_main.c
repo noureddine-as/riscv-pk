@@ -3,20 +3,12 @@
 #include "atomic.h"
 #include "mtrap.h"
 #include "mcall.h"
+#include "encoding.h"
 
 volatile uint8_t final_ret = 0;
 
 #define	RET_LIMIT 		0x0F
 
-static spinlock_t print_lock = SPINLOCK_INIT;
-
-void wake_hart(int hart)
-{
-	if (hart == 0)
-		*(HLS()->ipi) = 1;
-	else
-      *(OTHER_HLS(hart)->ipi) = 1; // wakeup the hart
-}
 
 void foo(int cid)
 {	
@@ -24,14 +16,8 @@ void foo(int cid)
 	final_ret += (1 << cid);
 }
 
-void machine_main(long cid, char** argv){
+/*
 
-}
-
-
-//static uintptr_t mcall_clear_ipi()
-//extern void send_ipi(uintptr_t recipient, int event);
-//static void send_ipi_many(uintptr_t* pmask, int event)
 
 void sbi_call_shutdown(void){
 
@@ -43,6 +29,8 @@ void sbi_call_shutdown(void){
          		 );
 
 }
+
+
 
 void sbi_call_ipi(void){
 
@@ -68,6 +56,7 @@ void sbi_clean_ipi(void){
 
 }
 
+
 void sbi_call_set_timer_relative(int offset){
 	uint64_t next_interruption = *mtime + offset;
 
@@ -82,20 +71,19 @@ void sbi_call_set_timer_relative(int offset){
 
 }
 
-void sbi_call_set_timer_absolute(int instant){
+void sbi_call_set_timer(uint64_t instant){
 
     asm volatile ("ld t0, %1\n\t" 
     			  "add a0, x0, t0\n\t"
     			  "li a7, %0\n\t"
           		  "ecall\n\t"
-		         :       // output 
-         		 :"I" (SBI_SET_TIMER), "m" (instant)         // input 
-         		 : // "a0", "a1", "a2", "a3", "a4", "a7"        // clobbered register 
+		         : //"=r" (t0), "=r" (a0), "=r" (a7)       // output 
+         		 :"I" (SBI_SET_TIMER), "r" (instant)         // input 
+         		 : "t0", "a0", "a7" // "a0", "a1", "a2", "a3", "a4", "a7"        // clobbered register 
          		 );
 
 }
 
-//#define TIMER_ABS_CALL	15000
 
 const uint64_t TIMER_CMP_VAL = 16000;
 void sbi_call_set_timer_absolute_const(){
@@ -106,135 +94,54 @@ void sbi_call_set_timer_absolute_const(){
     			  "li a7, %0\n\t"
           		  "ecall\n\t"
 		         :       // output 
-         		 :"I" (SBI_SET_TIMER) //, "I" (TIMER_ABS_CALL)         // input 
-         		 : "t0", "t1" // "a0", "a1", "a2", "a3", "a4", "a7"        // clobbered register 
+         		 :"I" (SBI_SET_TIMER)     // input 
+         		 : "t0", "t1", "a0", "a7"             // clobbered register 
          		 );
 
 }
-/*
+*/
 
-extern void handle_trap(trapframe_t* tf);
-void init_interrupts()
+
+uintptr_t sbi_call_putchar(char ch) //uintptr_t arg0, uintptr_t code)
 {
+  register uintptr_t a0 asm ("a0") = (uintptr_t)ch;
+  register uintptr_t a1 asm ("a1"); // = 'P';
+  register uintptr_t a7 asm ("a7") = SBI_CONSOLE_PUTCHAR;
+  asm volatile ("ecall" : "=r" (a0) : "r" (a0), "r" (a1), "r" (a7));
 
-  uintptr_t sstatus = read_csr(sstatus);
-  sstatus = INSERT_FIELD(sstatus, MSTATUS_MPP, PRV_S);
-  sstatus = INSERT_FIELD(sstatus, MSTATUS_MPIE, 1);
- // mstatus = INSERT_FIELD(mstatus, MSTATUS_MPIE, 0);  // Original
-  write_csr(sstatus, sstatus);
-  //write_csr(mscratch, MACHINE_STACK_TOP() - MENTRY_FRAME_SIZE);
-  //write_csr(sepc, handle_trap);
-}*/
+  return a0;
+}
+
 
 extern volatile uint64_t* mtime;
 void supervisor_main(long cid, char** argv)
 {
-
-
-
-
-	//poweroff(99);
-	printk("Time now is %ud \n", *mtime);
-
-	printk("Hello world  1  , from main, Core: %d \n", cid);
+	printk("[Core %d] Time now is %ul \n", cid, *mtime);
+	printk("[Core %d] Hello world  1, from main\n", cid);
 
     while(cid != 0){
-	    wfi();};
+	    wfi();
+	}
 
 	if(cid == 0){
-		//printk("will send IPI now, Core: %d \n", cid);
-		printk("Configuring timer, Core: %d,     mtime=%d   next_trigger=%d \n", cid, *mtime, *mtime + 2000);
-		
-		sbi_call_set_timer_absolute_const();
-		//sbi_call_ipi();
-		//sbi_call_set_timer_relative(2000);
-		//sbi_call_ipi(); // ---> provokes unhandlable trap at 80003634
-		//sbi_clean_ipi();
-		//sbi_call_shutdown();
-		//uintptr_t sbi_call_code = SBI_SHUTDOWN;
-    
-
-		//send_ipi(1, IPI_SOFT );
-		// asm volatile ("li a7, %0\n\t"
-         //       "ecall\n\t"
-        //        : : "r" (SBI_SHUTDOWN) );
-
-                //"csrw pmpaddr0, %1\n\t"
-                //"csrw pmpcfg0, %0\n\t"
-                //".align 2\n\t"
-                //"1: csrw mtvec, t0"
-                //: : "r" (pmpc), "r" (-1UL) : "t0");
-
-		//uintptr_t time = read_csr(CSR_TIME);
-
-		//printk("Time now is %ud \n", *mtime);
-
+		uint64_t next_timer_int = *mtime + 1000;
+		printk("[Core %d] Will configure timer on %d \n", cid, next_timer_int);
+		//sbi_call_set_timer_absolute_const();
+		//sbi_call_set_timer(next_timer_int);
 	}
 
-	volatile int a = 500;
-	while(a--){
-		printk("Instant %d \n", *mtime);
-	    wfi();};
+	//meth();meth();meth();meth();
 
-	//while(1){
+	int ret = (int)(sbi_call_putchar('\n'));
+	printk("Return from SBI call = %d \n", ret);
 
-		//printk("wait ... \n");
-	//}
+	//volatile int a = 500;
+	//while(a--){
+	//	printk("Instant %d \n", *mtime);
+	//    wfi();};
 
-//sbi_clean_ipi();
+	printk("[Core %d] Hello world  2, from main\n", cid);
 
-	/*
-  la s0, str
-1:
-  lbu a0, (s0)
-  beqz a0, 1f
-  li a7, SBI_CONSOLE_PUTCHAR
-  ecall
-  add s0, s0, 1
-  j 1b
-
-1:
-  li a7, SBI_SHUTDOWN
-  ecall
-
-
-
-	*/
-
-//sbi_call_shutdown();
-	printk("Hello world  2  , from main, Core: %d \n", cid);
-
-	putstring("using putstring ...\n");
-
-/*
-	// Core1: waits here until waken up by core 0
-	if(cid == 1 && ((OTHER_HLS(1)->mipi_pending) == 0))
-		__asm__ volatile("wfi");
-
-	// Core0: executes foo(0)
-	//    	  waits here until waken up by core 1
-	if(cid == 0){
-		foo(cid);
-		wake_hart(1);
-		while(HLS()->mipi_pending == 0)
-			__asm__ volatile("wfi");
-	}
-
-	// Core1: executes foo(1)
-	//    	  waits here forever
-	if(cid == 1){
-		foo(cid);
-		wake_hart(0);
-		while((OTHER_HLS(1)->mipi_pending) == 0)
-			__asm__ volatile("wfi");
-	}
-
-
-	// here core 0 comes
-	//while(final_ret < RET_LIMIT || cid > 0);
-	while(final_ret < 3);
-	printk("---------- Finishing ... Core %d --------- \n", cid);
-*/
 	shutdown(99);
 }
 
