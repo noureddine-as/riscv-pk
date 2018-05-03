@@ -4,6 +4,7 @@
 #include "config.h"
 #include "syscall.h"
 #include "mmap.h"
+#include "sbi_calls.h"
 
 static void handle_illegal_instruction(trapframe_t* tf)
 {
@@ -73,26 +74,6 @@ static void handle_syscall(trapframe_t* tf)
   tf->gpr[10] = do_syscall(tf->gpr[10], tf->gpr[11], tf->gpr[12], tf->gpr[13],
                            tf->gpr[14], tf->gpr[15], tf->gpr[17]);
   tf->epc += 4;
-}
-
-uintptr_t sbi_call_set_timer_MAX() //uintptr_t arg0, uintptr_t code)
-{
-  register uintptr_t a0 asm ("a0") = (uintptr_t)(-1ULL);
-  register uintptr_t a1 asm ("a1"); // = 'P';
-  register uintptr_t a7 asm ("a7") = 0;
-  asm volatile ("ecall" : "=r" (a0) : "r" (a0), "r" (a1), "r" (a7));
-
-  return a0;
-}
-
-uintptr_t sbi_call_set_timer_step() //uintptr_t arg0, uintptr_t code)
-{
-  register uintptr_t a0 asm ("a0") = (uintptr_t)(*mtime + 1000);
-  register uintptr_t a1 asm ("a1"); // = 'P';
-  register uintptr_t a7 asm ("a7") = 0;
-  asm volatile ("ecall" : "=r" (a0) : "r" (a0), "r" (a1), "r" (a7));
-
-  return a0;
 }
 
 static void handle_interrupt(trapframe_t* tf)

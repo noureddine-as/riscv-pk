@@ -12,6 +12,7 @@ pk_hdrs = \
 	pk.h \
 	syscall.h \
 	fdt_k.h \
+	sbi_calls.h \
 
 pk_c_srcs = \
 	file.c \
@@ -22,6 +23,7 @@ pk_c_srcs = \
 	console.c \
 	mmap.c \
 	fdt_k.c \
+	sbi_calls.c \
 	supervisor_main.c \
 	
 pk_asm_srcs = \

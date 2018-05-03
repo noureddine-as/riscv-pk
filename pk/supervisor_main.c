@@ -1,43 +1,20 @@
 #include "pk.h"
 #include "frontend.h"
-#include "atomic.h"
+//#include "atomic.h"
 #include "mtrap.h"
-#include "mcall.h"
-#include "encoding.h"
+//#include "encoding.h"
+#include "sbi_calls.h"
+
+extern volatile uint64_t* mtime;
 
 volatile uint8_t final_ret = 0;
-
 #define	RET_LIMIT 		0x0F
-
-
 void foo(int cid)
 {	
 	printk("Hello, from foo() -- Core %d \n", cid);
 	final_ret += (1 << cid);
 }
 
-
-uintptr_t sbi_call_putchar(char ch) //uintptr_t arg0, uintptr_t code)
-{
-  register uintptr_t a0 asm ("a0") = (uintptr_t)ch;
-  register uintptr_t a1 asm ("a1"); // = 'P';
-  register uintptr_t a7 asm ("a7") = SBI_CONSOLE_PUTCHAR;
-  asm volatile ("ecall" : "=r" (a0) : "r" (a0), "r" (a1), "r" (a7));
-
-  return a0;
-}
-
-uintptr_t sbi_call_set_timer(uint64_t next_time) //uintptr_t arg0, uintptr_t code)
-{
-  register uintptr_t a0 asm ("a0") = (uintptr_t)next_time;
-  register uintptr_t a1 asm ("a1"); // = 'P';
-  register uintptr_t a7 asm ("a7") = SBI_SET_TIMER;
-  asm volatile ("ecall" : "=r" (a0) : "r" (a0), "r" (a1), "r" (a7));
-
-  return a0;
-}
-
-extern volatile uint64_t* mtime;
 void supervisor_main(long cid, char** argv)
 {
 	printk("[Core %d] Time now is %ul \n", cid, *mtime);
